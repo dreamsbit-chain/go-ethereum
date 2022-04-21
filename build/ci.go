@@ -148,7 +148,7 @@ var (
 	// This is the version of go that will be downloaded by
 	//
 	//     go run ci.go install -dlgo
-	dlgoVersion = "1.17.5"
+	dlgoVersion = "1.18.1"
 )
 
 var GOBIN, _ = filepath.Abs(filepath.Join("build", "bin"))
@@ -332,16 +332,21 @@ func doLint(cmdline []string) {
 
 // downloadLinter downloads and unpacks golangci-lint.
 func downloadLinter(cachedir string) string {
-	const version = "1.42.0"
+	const version = "1.45.2"
 
 	csdb := build.MustLoadChecksums("build/checksums.txt")
 	arch := runtime.GOARCH
+	ext := ".tar.gz"
+
+	if runtime.GOOS == "windows" {
+		ext = ".zip"
+	}
 	if arch == "arm" {
 		arch += "v" + os.Getenv("GOARM")
 	}
 	base := fmt.Sprintf("golangci-lint-%s-%s-%s", version, runtime.GOOS, arch)
-	url := fmt.Sprintf("https://github.com/golangci/golangci-lint/releases/download/v%s/%s.tar.gz", version, base)
-	archivePath := filepath.Join(cachedir, base+".tar.gz")
+	url := fmt.Sprintf("https://github.com/golangci/golangci-lint/releases/download/v%s/%s%s", version, base, ext)
+	archivePath := filepath.Join(cachedir, base+ext)
 	if err := csdb.DownloadFile(url, archivePath); err != nil {
 		log.Fatal(err)
 	}
@@ -1128,11 +1133,7 @@ func doXCodeFramework(cmdline []string) {
 	tc := new(build.GoToolchain)
 
 	// Build gomobile.
-	build.MustRun(tc.Install(GOBIN, "golang.org/x/mobile/cmd/gomobile@latest", "golang.org/x/mobile/cmd/gobind@latest"))
-
-	// Ensure all dependencies are available. This is required to make
-	// gomobile bind work because it expects go.sum to contain all checksums.
-	build.MustRun(tc.Go("mod", "download"))
+	build.MustRun(tc.Install(GOBIN, "golang.org/x/mobile/cmd/gomobile", "golang.org/x/mobile/cmd/gobind"))
 
 	// Build the iOS XCode framework
 	bind := gomobileTool("bind", "-ldflags", "-s -w", "--target", "ios", "-v", "github.com/ethereum/go-ethereum/mobile")
